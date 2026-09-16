@@ -6,43 +6,55 @@
 - PHP 8+ با extension `curl` فعال (روی اکثر هاست‌ها پیش‌فرض فعاله)
 - بدون نیاز به Composer یا هیچ کتابخونه‌ی خارجی
 
-## 1) تنظیم فایل .env
+دو راه نصب داری: **نصاب گرافیکی** (`installer/index.php`) برای هاست، و **اسکریپت خودکار** (`install.sh`) برای سرور. هر دو راه دستی (`.env.example`) هم زیرشون توضیح داده شده اگه بخوای خودت دستی تنظیم کنی.
+
+---
+
+## حالت ۱: روی هاست اشتراکی (با نصاب گرافیکی)
+
+1. کل پوشه پروژه رو (همه فایل‌های `.php`، پوشه `installer`، `.htaccess`) داخل `public_html` یا زیرپوشه‌ای مثل `public_html/aigeminibot` آپلود کن.
+2. از مرورگر برو به آدرس پوشه installer، مثلاً:
+   ```
+   https://yourdomain.com/aigeminibot/installer/
+   ```
+3. فرم رو پر کن:
+   - توکن ربات تلگرام (از @BotFather)
+   - Gemini API Key (از https://aistudio.google.com/apikey)
+   - مدل Gemini (اختیاری، پیش‌فرض `gemini-2.0-flash`)
+   - GitHub Personal Access Token
+   - ریپوی پیش‌فرض `owner/repo` (اختیاری)
+   - آیدی عددی تلگرام خودت (از @userinfobot)
+4. دکمه «نصب و ثبت Webhook» رو بزن. نصاب خودش فایل `.env` رو می‌سازه و آدرس `webhook.php` رو به تلگرام معرفی می‌کنه — نیازی به دستور دستی نیست.
+5. **مهم:** بعد از دیدن پیام موفقیت، پوشه `installer` رو کامل از روی هاست پاک کن (چون بدون رمز، هرکسی که آدرسش رو پیدا کنه می‌تونه تنظیمات رو عوض کنه).
+
+### نصب دستی (به‌جای نصاب گرافیکی)
+اگه ترجیح می‌دی دستی تنظیم کنی:
 ```
 cp .env.example .env
 ```
-و مقادیر رو پر کن:
-- `TELEGRAM_BOT_TOKEN`: از @BotFather
-- `GEMINI_API_KEY`: از https://aistudio.google.com/apikey
-- `GITHUB_TOKEN`: Personal Access Token با اسکوپ نوشتن روی ریپو
-- `ALLOWED_TELEGRAM_USER_ID`: آیدی عددی خودت (با @userinfobot بگیر) تا فقط تو بتونی از ربات استفاده کنی
-
----
-
-## حالت ۱: روی هاست اشتراکی
-
-1. کل پوشه پروژه (همه فایل‌های `.php` + `.env` + `.htaccess`) رو داخل `public_html` (یا زیرپوشه‌ای مثل `public_html/bot`) آپلود کن.
-2. فایل `.htaccess` از دسترسی مستقیم به `.env` و فایل‌های state جلوگیری می‌کنه — حتماً همراه بقیه فایل‌ها آپلود بشه.
-3. از روی همون سرور یا از لپ‌تاپت (با PHP نصب‌شده محلی) دستور زیر رو بزن تا webhook ثبت بشه:
-   ```
-   php set_webhook.php https://yourdomain.com/bot/webhook.php
-   ```
-4. تمام. حالا هر پیام تلگرام مستقیم به `webhook.php` روی هاست می‌ره.
-
----
-
-## حالت ۲: روی سرور خودت (پورت 2000 برای همه‌چیز)
-
-تلگرام فقط آدرس **HTTPS** رو به عنوان webhook قبول می‌کنه، پس پورت 2000 باید پشت یک HTTPS بیاد. ساده‌ترین راه:
-
-### الف) اجرای PHP روی پورت 2000
-```bash
-cd gemini_github_bot_php
-php -S 0.0.0.0:2000 webhook.php
+مقادیر بالا رو داخلش پر کن، بعد این دستور رو بزن تا webhook ثبت بشه:
 ```
-(برای اجرای دائمی در پس‌زمینه از `screen`, `tmux`, `systemd`, یا `pm2` استفاده کن.)
+php set_webhook.php https://yourdomain.com/aigeminibot/webhook.php
+```
 
-### ب) گرفتن HTTPS جلوی پورت 2000
-دو گزینه:
+---
+
+## حالت ۲: روی سرور خودت (با install.sh، پورت 2000)
+
+```bash
+git clone https://github.com/kiankan/aigeminibot.git
+cd aigeminibot
+chmod +x install.sh
+./install.sh
+```
+
+این اسکریپت به‌صورت خودکار:
+1. وجود `php-cli` و `curl` رو چک می‌کنه.
+2. توکن‌ها (تلگرام، Gemini، GitHub، آیدی مجاز) رو ازت می‌پرسه و فایل `.env` رو می‌سازه.
+3. ربات رو روی **پورت 2000** بالا می‌آره:
+   - اگه `root` باشی و `systemd` موجود باشه → یک سرویس دائمی به اسم `aigeminibot` می‌سازه (`systemctl status aigeminibot`، `journalctl -u aigeminibot -f`).
+   - وگرنه → با `nohup` در پس‌زمینه اجرا می‌کنه (لاگ در `bot.log`، توقف با `kill $(cat .bot.pid)`).
+4. در آخر راهنمای گرفتن HTTPS جلوی پورت 2000 رو نشون می‌ده (چون Webhook تلگرام فقط HTTPS قبول می‌کنه):
 
 **گزینه سریع (بدون دامنه) - Cloudflare Tunnel:**
 ```bash
@@ -65,11 +77,10 @@ server {
 }
 ```
 
-### ج) ثبت webhook
+بعد از گرفتن آدرس HTTPS، این دستور رو بزن تا webhook ثبت بشه:
 ```bash
-php set_webhook.php https://yourdomain.com/
+php set_webhook.php https://YOUR-HTTPS-ADDRESS/webhook.php
 ```
-یا آدرس Cloudflare Tunnel که گرفتی.
 
 ---
 
