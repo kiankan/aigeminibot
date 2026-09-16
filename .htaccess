@@ -1,0 +1,7 @@
+<FilesMatch "^(\.env|.*\.json)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_php.c>
+    php_flag display_errors off
+</IfModule>
